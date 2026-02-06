@@ -1,8 +1,8 @@
 /**
- * Instagram Video Extractor
+ * Instagram 视频提取器
  *
- * Core extraction logic using Playwright network interception.
- * Adapted from instagram-video-mcp for standalone CLI usage.
+ * 使用 Playwright 网络拦截的核心提取逻辑。
+ * 改编自 instagram-video-mcp 用于独立 CLI 使用。
  */
 
 import { chromium, Browser, BrowserContext, Page, Response } from "playwright";

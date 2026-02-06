@@ -1,11 +1,11 @@
 /**
- * Configuration Management
+ * 配置管理
  *
- * Manages the JSON config file that stores:
- * - Tracked user list (with per-user settings)
- * - Global download directory
- * - Max videos per user per run
- * - Schedule (cron expression)
+ * 管理存储以下内容的 JSON 配置文件：
+ * - 跟踪用户列表（含每用户设置）
+ * - 全局下载目录
+ * - 每次运行每用户最大视频数
+ * - 定时计划（cron 表达式）
  */
 
 import { readFile, writeFile, mkdir } from "fs/promises";

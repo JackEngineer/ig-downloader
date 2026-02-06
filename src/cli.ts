@@ -50,7 +50,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 async function cmdAdd(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const username = args.positional[0];
   if (!username) {
-    log.error("Usage: ig-downloader add <username> [--max-videos 20] [--note \"description\"]");
+    log.error("用法: ig-downloader add <用户名> [--max-videos 20] [--note \"描述\"]");
     process.exit(1);
   }
 
@@ -60,81 +60,81 @@ async function cmdAdd(config: ConfigManager, args: ParsedArgs): Promise<void> {
 
   const user = config.addUser(username, { maxVideos, note });
   if (!user) {
-    log.warn(`User @${username.replace(/^@/, "").toLowerCase()} is already tracked.`);
+    log.warn(`用户 @${username.replace(/^@/, "").toLowerCase()} 已经在跟踪列表中。`);
     return;
   }
 
   await config.save();
-  log.success(`Added @${user.username} to tracked users.`);
-  if (maxVideos) log.dim(`  Max videos: ${maxVideos}`);
-  if (note) log.dim(`  Note: ${note}`);
+  log.success(`已将 @${user.username} 添加到跟踪列表。`);
+  if (maxVideos) log.dim(`  最大视频数: ${maxVideos}`);
+  if (note) log.dim(`  备注: ${note}`);
 }
 
 async function cmdRemove(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const username = args.positional[0];
   if (!username) {
-    log.error("Usage: ig-downloader remove <username>");
+    log.error("用法: ig-downloader remove <用户名>");
     process.exit(1);
   }
 
   const removed = config.removeUser(username);
   if (!removed) {
-    log.warn(`User @${username.replace(/^@/, "").toLowerCase()} is not tracked.`);
+    log.warn(`用户 @${username.replace(/^@/, "").toLowerCase()} 不在跟踪列表中。`);
     return;
   }
 
   await config.save();
-  log.success(`Removed @${username.replace(/^@/, "").toLowerCase()} from tracked users.`);
+  log.success(`已将 @${username.replace(/^@/, "").toLowerCase()} 从跟踪列表中移除。`);
 }
 
 async function cmdEnable(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const username = args.positional[0];
   if (!username) {
-    log.error("Usage: ig-downloader enable <username>");
+    log.error("用法: ig-downloader enable <用户名>");
     process.exit(1);
   }
 
   if (!config.toggleUser(username, true)) {
-    log.warn(`User @${username.replace(/^@/, "").toLowerCase()} is not tracked.`);
+    log.warn(`用户 @${username.replace(/^@/, "").toLowerCase()} 不在跟踪列表中。`);
     return;
   }
 
   await config.save();
-  log.success(`Enabled @${username.replace(/^@/, "").toLowerCase()}.`);
+  log.success(`已启用 @${username.replace(/^@/, "").toLowerCase()}。`);
 }
 
 async function cmdDisable(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const username = args.positional[0];
   if (!username) {
-    log.error("Usage: ig-downloader disable <username>");
+    log.error("用法: ig-downloader disable <用户名>");
     process.exit(1);
   }
 
   if (!config.toggleUser(username, false)) {
-    log.warn(`User @${username.replace(/^@/, "").toLowerCase()} is not tracked.`);
+    log.warn(`用户 @${username.replace(/^@/, "").toLowerCase()} 不在跟踪列表中。`);
     return;
   }
 
   await config.save();
-  log.success(`Disabled @${username.replace(/^@/, "").toLowerCase()}.`);
+  log.success(`已禁用 @${username.replace(/^@/, "").toLowerCase()}。`);
 }
 
 async function cmdList(config: ConfigManager, history: HistoryManager): Promise<void> {
   const users = config.get().users;
   if (users.length === 0) {
-    log.info("No tracked users. Use 'ig-downloader add <username>' to start tracking.");
+    log.info("暂无跟踪用户。使用 'ig-downloader add <用户名>' 开始跟踪。");
     return;
   }
 
-  log.header("Tracked Users");
+  log.header("跟踪用户列表");
 
-  const rows: string[][] = [["Username", "Status", "Max", "Downloads", "Size", "Note"]];
+  const rows: string[][] = [["用户名", "状态", "最大视频数", "已下载", "大小", "备注"]];
 
   for (const user of users) {
     const stats = history.getUserStats(user.username);
     rows.push([
       `@${user.username}`,
-      user.enabled ? "✔ enabled" : "✖ disabled",
+      user.enabled ? "✔ 已启用" : "✖ 已禁用",
       String(user.maxVideos || config.get().maxVideosPerUser),
       String(stats.totalDownloads),
       log.formatSize(stats.totalSize),
@@ -150,20 +150,20 @@ async function cmdConfig(config: ConfigManager, args: ParsedArgs): Promise<void>
   const value = args.positional[1];
 
   if (!setting) {
-    log.header("Current Configuration");
+    log.header("当前配置");
     const cfg = config.get();
-    log.dim(`Config file:    ${config.getConfigPath()}`);
-    log.dim(`Download dir:   ${cfg.downloadDir}`);
-    log.dim(`Max videos:     ${cfg.maxVideosPerUser}`);
-    log.dim(`Scroll timeout: ${cfg.scrollTimeout}ms`);
-    log.dim(`Schedule:       ${cfg.schedule}`);
-    log.dim(`Tracked users:  ${cfg.users.length}`);
+    log.dim(`配置文件:     ${config.getConfigPath()}`);
+    log.dim(`下载目录:     ${cfg.downloadDir}`);
+    log.dim(`最大视频数:   ${cfg.maxVideosPerUser}`);
+    log.dim(`滚动超时:     ${cfg.scrollTimeout}ms`);
+    log.dim(`定时计划:     ${cfg.schedule}`);
+    log.dim(`跟踪用户数:   ${cfg.users.length}`);
     return;
   }
 
   if (!value) {
-    log.error(`Usage: ig-downloader config <setting> <value>`);
-    log.dim("Settings: download-dir, max-videos, scroll-timeout, schedule");
+    log.error(`用法: ig-downloader config <设置项> <值>`);
+    log.dim("设置项: download-dir, max-videos, scroll-timeout, schedule");
     process.exit(1);
   }
 
@@ -171,26 +171,26 @@ async function cmdConfig(config: ConfigManager, args: ParsedArgs): Promise<void>
     case "download-dir":
       config.setDownloadDir(value);
       await config.save();
-      log.success(`Download directory set to: ${resolve(value)}`);
+      log.success(`下载目录已设置为: ${resolve(value)}`);
       break;
     case "max-videos":
       config.setMaxVideos(Number(value));
       await config.save();
-      log.success(`Max videos per user set to: ${value}`);
+      log.success(`每用户最大视频数已设置为: ${value}`);
       break;
     case "scroll-timeout":
       config.get().scrollTimeout = Number(value);
       await config.save();
-      log.success(`Scroll timeout set to: ${value}ms`);
+      log.success(`滚动超时已设置为: ${value}ms`);
       break;
     case "schedule":
       config.setSchedule(value);
       await config.save();
-      log.success(`Schedule set to: ${value}`);
+      log.success(`定时计划已设置为: ${value}`);
       break;
     default:
-      log.error(`Unknown setting: ${setting}`);
-      log.dim("Available: download-dir, max-videos, scroll-timeout, schedule");
+      log.error(`未知设置项: ${setting}`);
+      log.dim("可用项: download-dir, max-videos, scroll-timeout, schedule");
       process.exit(1);
   }
 }
@@ -208,7 +208,7 @@ async function cmdRun(
   if (targetUsername) {
     const user = config.findUser(targetUsername);
     if (!user) {
-      log.error(`User @${targetUsername.replace(/^@/, "").toLowerCase()} is not tracked. Add with: ig-downloader add ${targetUsername}`);
+      log.error(`用户 @${targetUsername.replace(/^@/, "").toLowerCase()} 不在跟踪列表中。请先添加: ig-downloader add ${targetUsername}`);
       process.exit(1);
     }
     usersToProcess = [user];
@@ -217,18 +217,18 @@ async function cmdRun(
   }
 
   if (usersToProcess.length === 0) {
-    log.warn("No enabled users to process. Add users with: ig-downloader add <username>");
+    log.warn("没有启用的用户可处理。使用 ig-downloader add <用户名> 添加用户。");
     return;
   }
 
-  log.header(`Instagram Video Downloader`);
-  log.info(`Processing ${usersToProcess.length} user(s)...`);
-  log.dim(`Download dir: ${cfg.downloadDir}`);
-  if (dryRun) log.warn("DRY RUN — no files will be downloaded.");
+  log.header(`Instagram 视频下载器`);
+  log.info(`正在处理 ${usersToProcess.length} 个用户...`);
+  log.dim(`下载目录: ${cfg.downloadDir}`);
+  if (dryRun) log.warn("模拟运行 — 不会实际下载文件。");
 
   const extractor = new InstagramExtractor();
   await extractor.initialize();
-  log.success("Browser initialized.");
+  log.success("浏览器已初始化。");
 
   let globalDownloaded = 0;
   let globalFailed = 0;
@@ -240,15 +240,15 @@ async function cmdRun(
       const maxVideos = user.maxVideos || cfg.maxVideosPerUser;
 
       log.header(`@${user.username}`);
-      log.step(`Collecting reel links (max: ${maxVideos})...`);
+      log.step(`正在收集 Reel 链接 (最大: ${maxVideos})...`);
 
       const reelLinks = await extractor.collectReelLinks(user.username, maxVideos, cfg.scrollTimeout);
       if (reelLinks.length === 0) {
-        log.warn(`No reel links found for @${user.username}. Instagram may require login.`);
+        log.warn(`未找到 @${user.username} 的 Reel 链接。Instagram 可能需要登录。`);
         continue;
       }
 
-      log.info(`Found ${reelLinks.length} reel(s). Checking for new videos...`);
+      log.info(`找到 ${reelLinks.length} 个 Reel。正在检查新视频...`);
 
       const downloadedCodes = history.getDownloadedShortCodes(user.username);
       const newLinks = reelLinks.filter((link) => {
@@ -257,22 +257,22 @@ async function cmdRun(
       });
 
       if (newLinks.length === 0) {
-        log.success(`All videos already downloaded for @${user.username}.`);
+        log.success(`@${user.username} 的所有视频已下载完毕。`);
         globalSkipped += reelLinks.length;
         continue;
       }
 
-      log.info(`${newLinks.length} new video(s) to download (${reelLinks.length - newLinks.length} already downloaded).`);
+      log.info(`${newLinks.length} 个新视频待下载 (${reelLinks.length - newLinks.length} 个已下载过)。`);
       globalSkipped += reelLinks.length - newLinks.length;
 
       if (dryRun) {
         for (const link of newLinks) {
-          log.dim(`  Would download: ${link}`);
+          log.dim(`  将下载: ${link}`);
         }
         continue;
       }
 
-      log.step("Extracting video URLs...");
+      log.step("正在提取视频链接...");
 
       const tasks: DownloadTask[] = [];
       for (let i = 0; i < newLinks.length; i++) {
@@ -280,7 +280,7 @@ async function cmdRun(
         const shortCode = extractShortCode(link);
         if (!shortCode) continue;
 
-        log.progress(i + 1, newLinks.length, `Extracting ${shortCode}...`);
+        log.progress(i + 1, newLinks.length, `正在提取 ${shortCode}...`);
 
         const result = await extractor.extractFromPost(link);
         if (result.success && result.videos.length > 0) {
@@ -292,17 +292,17 @@ async function cmdRun(
             caption: best.caption,
           });
         } else {
-          log.warn(`Failed to extract video from ${link}: ${result.error || "unknown"}`);
+          log.warn(`无法从 ${link} 提取视频: ${result.error || "未知错误"}`);
           globalFailed++;
         }
       }
 
       if (tasks.length === 0) {
-        log.warn(`No videos could be extracted for @${user.username}.`);
+        log.warn(`无法为 @${user.username} 提取任何视频。`);
         continue;
       }
 
-      log.step(`Downloading ${tasks.length} video(s)...`);
+      log.step(`正在下载 ${tasks.length} 个视频...`);
 
       const { downloaded, failed } = await batchDownload(
         tasks,
@@ -329,10 +329,10 @@ async function cmdRun(
       globalSize += downloaded.reduce((sum, d) => sum + (d.size || 0), 0);
 
       if (downloaded.length > 0) {
-        log.success(`Downloaded ${downloaded.length} video(s) for @${user.username} (${log.formatSize(downloaded.reduce((s, d) => s + (d.size || 0), 0))})`);
+        log.success(`已为 @${user.username} 下载 ${downloaded.length} 个视频 (${log.formatSize(downloaded.reduce((s, d) => s + (d.size || 0), 0))})`);
       }
       if (failed.length > 0) {
-        log.warn(`${failed.length} download(s) failed for @${user.username}:`);
+        log.warn(`${failed.length} 个视频下载失败 @${user.username}:`);
         for (const f of failed) {
           log.dim(`  ${f.shortCode}: ${f.error}`);
         }
@@ -342,71 +342,71 @@ async function cmdRun(
     await extractor.close();
   }
 
-  log.header("Summary");
-  log.dim(`Downloaded: ${globalDownloaded} video(s) (${log.formatSize(globalSize)})`);
-  log.dim(`Skipped:   ${globalSkipped} (already downloaded)`);
-  log.dim(`Failed:    ${globalFailed}`);
+  log.header("汇总");
+  log.dim(`已下载: ${globalDownloaded} 个视频 (${log.formatSize(globalSize)})`);
+  log.dim(`已跳过: ${globalSkipped} 个 (已下载过)`);
+  log.dim(`失败:   ${globalFailed}`);
 }
 
 async function cmdStats(history: HistoryManager): Promise<void> {
   const stats = history.getGlobalStats();
-  log.header("Download Statistics");
-  log.dim(`Total users tracked:     ${stats.totalUsers}`);
-  log.dim(`Total videos downloaded:  ${stats.totalDownloads}`);
-  log.dim(`Total size:              ${log.formatSize(stats.totalSize)}`);
+  log.header("下载统计");
+  log.dim(`跟踪用户总数:     ${stats.totalUsers}`);
+  log.dim(`已下载视频总数:   ${stats.totalDownloads}`);
+  log.dim(`总大小:           ${log.formatSize(stats.totalSize)}`);
 }
 
 async function cmdCron(config: ConfigManager): Promise<void> {
   const cfg = config.get();
   const scriptPath = resolve(process.argv[1] || "ig-downloader");
 
-  log.header("Cron Setup");
-  log.info("Add this line to your crontab (run: crontab -e):");
+  log.header("定时任务设置");
+  log.info("将以下行添加到 crontab (运行: crontab -e):");
   console.log();
   console.log(`  ${cfg.schedule} cd ${resolve(".")} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
   console.log();
-  log.dim(`Current schedule: ${cfg.schedule}`);
-  log.dim("Change with: ig-downloader config schedule \"0 3 * * *\"");
+  log.dim(`当前计划: ${cfg.schedule}`);
+  log.dim("修改命令: ig-downloader config schedule \"0 3 * * *\"");
 }
 
 function showHelp(): void {
   console.log(`
-  ig-downloader — Automated Instagram video downloader
+  ig-downloader — 自动 Instagram 视频下载器
 
-  USAGE
-    ig-downloader <command> [options]
+  用法
+    ig-downloader <命令> [选项]
 
-  COMMANDS
-    add <username>         Track a new Instagram user
-      --max-videos <n>       Override max videos for this user
-      --note <text>          Add a note/label
+  命令
+    add <用户名>           跟踪新的 Instagram 用户
+      --max-videos <n>       为此用户设置最大视频数
+      --note <文本>          添加备注/标签
 
-    remove <username>      Stop tracking a user
-    enable <username>      Enable a disabled user
-    disable <username>     Disable a user without removing
+    remove <用户名>        停止跟踪用户
+    enable <用户名>        启用已禁用的用户
+    disable <用户名>       禁用用户而不删除
 
-    list                   Show all tracked users with stats
+    list                   显示所有跟踪用户及其统计信息
 
-    run [username]         Download new videos
-      --dry-run              Show what would be downloaded without downloading
+    run [用户名]           下载新视频
+      --dry-run              预览将要下载的内容而不实际下载
 
-    config                 Show current configuration
-    config <key> <value>   Update a setting
-      download-dir           Base download directory
-      max-videos             Default max videos per user
-      scroll-timeout         Scroll timeout in ms
-      schedule               Cron expression
+    config                 显示当前配置
+    config <键> <值>       更新设置
+      download-dir           基础下载目录
+      max-videos             每用户默认最大视频数
+      scroll-timeout         滚动超时时间（毫秒）
+      schedule               Cron 表达式
 
-    stats                  Show global download statistics
-    cron                   Show crontab setup instructions
-    help                   Show this help message
+    stats                  显示全局下载统计
+    cron                   显示 crontab 设置说明
+    help                   显示此帮助信息
 
-  EXAMPLES
-    ig-downloader add natgeo --note "National Geographic"
+  示例
+    ig-downloader add natgeo --note "国家地理"
     ig-downloader add bbcnews --max-videos 5
-    ig-downloader run                  # Download all enabled users
-    ig-downloader run natgeo           # Download specific user only
-    ig-downloader run --dry-run        # Preview without downloading
+    ig-downloader run                  # 下载所有启用用户
+    ig-downloader run natgeo           # 仅下载特定用户
+    ig-downloader run --dry-run        # 预览而不下载
     ig-downloader config download-dir ~/Videos/Instagram
     ig-downloader config schedule "0 8,20 * * *"
   `);
@@ -461,13 +461,13 @@ async function main(): Promise<void> {
       showHelp();
       break;
     default:
-      log.error(`Unknown command: ${args.command}`);
+      log.error(`未知命令: ${args.command}`);
       showHelp();
       process.exit(1);
   }
 }
 
 main().catch((error) => {
-  log.error(`Fatal: ${error instanceof Error ? error.message : String(error)}`);
+  log.error(`致命错误: ${error instanceof Error ? error.message : String(error)}`);
   process.exit(1);
 });

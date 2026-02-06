@@ -1,10 +1,10 @@
 /**
- * Video Downloader
+ * 视频下载器
  *
- * Handles:
- * - Downloading video files from CDN URLs with retry
- * - Organizing into user-specific directories
- * - Naming files based on caption/shortCode
+ * 处理：
+ * - 从 CDN URL 下载视频文件（带重试）
+ * - 组织到用户特定目录
+ * - 基于标题/短代码命名文件
  */
 
 import { writeFile, mkdir, stat } from "fs/promises";

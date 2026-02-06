@@ -1,8 +1,8 @@
 /**
- * Download History / Deduplication
+ * 下载历史 / 去重
  *
- * Tracks downloaded videos by Instagram shortCode per user.
- * Persists to a JSON file alongside config.
+ * 按用户跟踪通过 Instagram 短代码下载的视频。
+ * 持久化到配置文件旁边的 JSON 文件。
  */
 
 import { readFile, writeFile, mkdir } from "fs/promises";
