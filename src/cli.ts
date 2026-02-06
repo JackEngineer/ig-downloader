@@ -5,6 +5,7 @@ import { HistoryManager } from "./history.js";
 import { InstagramExtractor, extractShortCode } from "./extractor.js";
 import { batchDownload, DownloadTask } from "./downloader.js";
 import { log } from "./logger.js";
+import { runCronWizard, formatCronHelp } from "./cron-wizard.js";
 import { resolve } from "path";
 
 // ============================================================================
@@ -188,6 +189,9 @@ async function cmdConfig(config: ConfigManager, args: ParsedArgs): Promise<void>
       await config.save();
       log.success(`定时计划已设置为: ${value}`);
       break;
+    case "schedule-wizard":
+      log.error("请使用: ig-downloader schedule-wizard");
+      process.exit(1);
     default:
       log.error(`未知设置项: ${setting}`);
       log.dim("可用项: download-dir, max-videos, scroll-timeout, schedule");
@@ -356,7 +360,24 @@ async function cmdStats(history: HistoryManager): Promise<void> {
   log.dim(`总大小:           ${log.formatSize(stats.totalSize)}`);
 }
 
-async function cmdCron(config: ConfigManager): Promise<void> {
+async function cmdScheduleWizard(config: ConfigManager): Promise<void> {
+  const result = await runCronWizard();
+
+  if (!result) {
+    log.error("配置已取消");
+    process.exit(1);
+  }
+
+  config.setSchedule(result.cronExpression);
+  await config.save();
+
+  log.success("\n✅ 定时计划已保存!");
+  log.dim(`   描述: ${result.description}`);
+  log.dim(`   Cron: ${result.cronExpression}`);
+  log.info("\n提示: 使用 'ig-downloader cron' 查看如何添加到系统 crontab");
+}
+
+async function cmdCron(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const cfg = config.get();
   const scriptPath = resolve(process.argv[1] || "ig-downloader");
 
@@ -366,7 +387,13 @@ async function cmdCron(config: ConfigManager): Promise<void> {
   console.log(`  ${cfg.schedule} cd ${resolve(".")} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
   console.log();
   log.dim(`当前计划: ${cfg.schedule}`);
-  log.dim("修改命令: ig-downloader config schedule \"0 3 * * *\"");
+
+  if (args.flags["help"] || args.flags["h"]) {
+    console.log(formatCronHelp());
+  } else {
+    log.dim("提示: ig-downloader cron --help 查看 cron 格式说明");
+    log.dim("      ig-downloader schedule-wizard 使用交互式向导设置时间");
+  }
 }
 
 function showHelp(): void {
@@ -399,6 +426,7 @@ function showHelp(): void {
 
     stats                  显示全局下载统计
     cron                   显示 crontab 设置说明
+    schedule-wizard          交互式设置定时计划 (推荐)
     help                   显示此帮助信息
 
   示例
@@ -453,7 +481,10 @@ async function main(): Promise<void> {
       await cmdStats(history);
       break;
     case "cron":
-      await cmdCron(config);
+      await cmdCron(config, args);
+      break;
+    case "schedule-wizard":
+      await cmdScheduleWizard(config);
       break;
     case "help":
     case "--help":
