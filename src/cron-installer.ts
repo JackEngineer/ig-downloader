@@ -7,6 +7,7 @@
 import { exec } from "child_process";
 import { promisify } from "util";
 import { resolve } from "path";
+import { homedir } from "os";
 import { log } from "./logger.js";
 
 const execAsync = promisify(exec);
@@ -44,10 +45,15 @@ export async function getNodePath(): Promise<string | null> {
       "/usr/local/bin/node",
       "/usr/bin/node",
       "/opt/homebrew/bin/node",
-      "/Users/jacklee/.nvm/versions/node/v22.13.1/bin/node",
+      // 动态检测 nvm 路径
+      ...(process.env.NVM_DIR ? [`${process.env.NVM_DIR}/versions/node/v${process.version}/bin/node`] : []),
+      // 其他可能的 nvm 版本
+      `${homedir()}/.nvm/versions/node/v${process.version}/bin/node`,
+      `${homedir()}/.nvm/versions/node/current/bin/node`,
     ];
 
     for (const path of commonPaths) {
+      if (!path) continue;
       try {
         await execAsync(`test -x ${path}`);
         return path;

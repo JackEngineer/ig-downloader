@@ -74,9 +74,10 @@ export class ConfigManager {
   async load(): Promise<AppConfig> {
     try {
       const raw = await readFile(this.configPath, "utf-8");
-      this.config = { ...DEFAULT_CONFIG, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      this.config = { ...DEFAULT_CONFIG, ...parsed, users: parsed.users || [] };
     } catch {
-      this.config = { ...DEFAULT_CONFIG };
+      this.config = { ...DEFAULT_CONFIG, users: [] };
     }
     return this.config!;
   }
