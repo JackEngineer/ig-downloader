@@ -24,7 +24,7 @@
 
 ```bash
 # 克隆仓库
-git clone <repository-url>
+git clone https://github.com/JackEngineer/ig-downloader.git
 cd ig-downloader
 
 # 安装依赖
