@@ -6,7 +6,7 @@ import { InstagramExtractor, extractShortCode } from "./extractor.js";
 import { batchDownload, DownloadTask } from "./downloader.js";
 import { log } from "./logger.js";
 import { runCronWizard, formatCronHelp } from "./cron-wizard.js";
-import { getCronStatus, installCronJob, uninstallCronJob, displayCronStatus } from "./cron-installer.js";
+import { getCronStatus, installCronJob, uninstallCronJob, displayCronStatus, getNodePath } from "./cron-installer.js";
 import { resolve } from "path";
 
 // ============================================================================
@@ -384,7 +384,6 @@ async function cmdCron(config: ConfigManager, args: ParsedArgs): Promise<void> {
 
   log.header("定时任务设置");
 
-  // 先显示当前状态
   const status = await getCronStatus();
   displayCronStatus(status, cfg.schedule);
 
@@ -394,10 +393,16 @@ async function cmdCron(config: ConfigManager, args: ParsedArgs): Promise<void> {
   log.dim("  ig-downloader uninstall-cron  卸载定时任务");
 
   if (!status.installed) {
+    const nodePath = await getNodePath();
     console.log();
     log.info("或者手动添加到 crontab:");
     console.log();
-    console.log(`  ${cfg.schedule} cd ${resolve(".")} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    if (nodePath) {
+      console.log(`  ${cfg.schedule} cd ${resolve(".")} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    } else {
+      console.log(`  ${cfg.schedule} cd ${resolve(".")} && <node路径> ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+      log.dim("提示: 使用 'which node' 找到你的 node 路径");
+    }
   }
 
   if (args.flags["help"] || args.flags["h"]) {
@@ -412,7 +417,6 @@ async function cmdInstallCron(config: ConfigManager): Promise<void> {
 
   log.header("安装定时任务");
 
-  // 检查是否有跟踪的用户
   const enabledUsers = config.getEnabledUsers();
   if (enabledUsers.length === 0) {
     log.warn("还没有启用的用户。请先添加用户:");
@@ -420,7 +424,18 @@ async function cmdInstallCron(config: ConfigManager): Promise<void> {
     process.exit(1);
   }
 
+  const nodePath = await getNodePath();
+  if (!nodePath) {
+    log.error("无法找到 Node.js 路径");
+    log.info("请确保 Node.js 已安装，或使用以下命令手动安装:");
+    log.dim("  1. 找到 node 路径: which node");
+    log.dim(`  2. 编辑 crontab: crontab -e`);
+    log.dim(`  3. 添加: ${cfg.schedule} cd ${workDir} && <node路径> ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    process.exit(1);
+  }
+
   log.info(`计划频率: ${cfg.schedule}`);
+  log.info(`Node 路径: ${nodePath}`);
   log.info(`工作目录: ${workDir}`);
   log.info(`启用的用户: ${enabledUsers.length} 个`);
 
@@ -438,7 +453,7 @@ async function cmdInstallCron(config: ConfigManager): Promise<void> {
     log.error("\n❌ 安装失败");
     log.info("\n你可以尝试手动安装:");
     log.dim("  1. 运行: crontab -e");
-    log.dim(`  2. 添加: ${cfg.schedule} cd ${workDir} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    log.dim(`  2. 添加: ${cfg.schedule} cd ${workDir} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
     process.exit(1);
   }
 }

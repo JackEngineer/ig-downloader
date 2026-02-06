@@ -22,8 +22,42 @@ const CRON_END_COMMENT = "# ig-downloader end";
 // Helper Functions
 // ============================================================================
 
-function buildCronCommand(schedule: string, scriptPath: string, workDir: string): string {
-  return `${schedule} cd ${workDir} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`;
+function buildCronCommand(
+  schedule: string,
+  scriptPath: string,
+  workDir: string,
+  nodePath: string
+): string {
+  return `${schedule} cd ${workDir} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`;
+}
+
+/**
+ * 获取 Node.js 的绝对路径
+ */
+export async function getNodePath(): Promise<string | null> {
+  try {
+    const { stdout } = await execAsync("which node");
+    return stdout.trim();
+  } catch {
+    // 尝试常见路径
+    const commonPaths = [
+      "/usr/local/bin/node",
+      "/usr/bin/node",
+      "/opt/homebrew/bin/node",
+      "/Users/jacklee/.nvm/versions/node/v22.13.1/bin/node",
+    ];
+
+    for (const path of commonPaths) {
+      try {
+        await execAsync(`test -x ${path}`);
+        return path;
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
 }
 
 // ============================================================================
@@ -83,7 +117,14 @@ export async function installCronJob(
   scriptPath: string,
   workDir: string
 ): Promise<boolean> {
-  const newJob = buildCronCommand(schedule, scriptPath, workDir);
+  const nodePath = await getNodePath();
+
+  if (!nodePath) {
+    log.error("无法找到 Node.js 路径，请确保 Node.js 已安装");
+    return false;
+  }
+
+  const newJob = buildCronCommand(schedule, scriptPath, workDir, nodePath);
   const status = await getCronStatus();
 
   let newCrontab: string;
