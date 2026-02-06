@@ -1,6 +1,6 @@
 {
   "name": "instagram-video-dl",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Automated Instagram video downloader with user tracking, deduplication, and cron scheduling",
   "type": "module",
   "main": "dist/cli.js",
@@ -42,7 +42,7 @@
     "automation",
     "scraper"
   ],
-  "author": "",
+  "author": "Jack Lee",
   "license": "MIT",
   "dependencies": {
     "playwright": "^1.49.1"
