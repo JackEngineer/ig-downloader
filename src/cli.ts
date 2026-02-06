@@ -6,6 +6,7 @@ import { InstagramExtractor, extractShortCode } from "./extractor.js";
 import { batchDownload, DownloadTask } from "./downloader.js";
 import { log } from "./logger.js";
 import { runCronWizard, formatCronHelp } from "./cron-wizard.js";
+import { getCronStatus, installCronJob, uninstallCronJob, displayCronStatus } from "./cron-installer.js";
 import { resolve } from "path";
 
 // ============================================================================
@@ -382,17 +383,86 @@ async function cmdCron(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const scriptPath = resolve(process.argv[1] || "ig-downloader");
 
   log.header("定时任务设置");
-  log.info("将以下行添加到 crontab (运行: crontab -e):");
+
+  // 先显示当前状态
+  const status = await getCronStatus();
+  displayCronStatus(status, cfg.schedule);
+
   console.log();
-  console.log(`  ${cfg.schedule} cd ${resolve(".")} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
-  console.log();
-  log.dim(`当前计划: ${cfg.schedule}`);
+  log.info("要自动运行，请使用以下命令:");
+  log.dim("  ig-downloader install-cron    安装定时任务到系统 crontab");
+  log.dim("  ig-downloader uninstall-cron  卸载定时任务");
+
+  if (!status.installed) {
+    console.log();
+    log.info("或者手动添加到 crontab:");
+    console.log();
+    console.log(`  ${cfg.schedule} cd ${resolve(".")} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+  }
 
   if (args.flags["help"] || args.flags["h"]) {
     console.log(formatCronHelp());
+  }
+}
+
+async function cmdInstallCron(config: ConfigManager): Promise<void> {
+  const cfg = config.get();
+  const scriptPath = resolve(process.argv[1] || "ig-downloader");
+  const workDir = resolve(".");
+
+  log.header("安装定时任务");
+
+  // 检查是否有跟踪的用户
+  const enabledUsers = config.getEnabledUsers();
+  if (enabledUsers.length === 0) {
+    log.warn("还没有启用的用户。请先添加用户:");
+    log.dim("  ig-downloader add <用户名>");
+    process.exit(1);
+  }
+
+  log.info(`计划频率: ${cfg.schedule}`);
+  log.info(`工作目录: ${workDir}`);
+  log.info(`启用的用户: ${enabledUsers.length} 个`);
+
+  const success = await installCronJob(cfg.schedule, scriptPath, workDir);
+
+  if (success) {
+    log.success("\n✅ 定时任务已安装!");
+    log.info("\n任务将在设定的时间自动运行。");
+    log.dim("日志文件: ~/ig-downloader.log");
+    log.dim("查看日志: tail -f ~/ig-downloader.log");
+    log.info("\n其他命令:");
+    log.dim("  ig-downloader cron          查看任务状态");
+    log.dim("  ig-downloader uninstall-cron  卸载定时任务");
   } else {
-    log.dim("提示: ig-downloader cron --help 查看 cron 格式说明");
-    log.dim("      ig-downloader schedule-wizard 使用交互式向导设置时间");
+    log.error("\n❌ 安装失败");
+    log.info("\n你可以尝试手动安装:");
+    log.dim("  1. 运行: crontab -e");
+    log.dim(`  2. 添加: ${cfg.schedule} cd ${workDir} && node ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    process.exit(1);
+  }
+}
+
+async function cmdUninstallCron(): Promise<void> {
+  log.header("卸载定时任务");
+
+  const status = await getCronStatus();
+
+  if (!status.installed) {
+    log.warn("没有找到已安装的定时任务");
+    return;
+  }
+
+  log.info("将移除以下任务:");
+  log.dim(`  ${status.ourJob}`);
+
+  const success = await uninstallCronJob();
+
+  if (success) {
+    log.success("\n✅ 定时任务已卸载");
+  } else {
+    log.error("\n❌ 卸载失败");
+    process.exit(1);
   }
 }
 
@@ -425,7 +495,9 @@ function showHelp(): void {
       schedule               Cron 表达式
 
     stats                  显示全局下载统计
-    cron                   显示 crontab 设置说明
+    cron                   显示 crontab 设置说明和状态
+    install-cron           自动安装定时任务到系统
+    uninstall-cron         卸载定时任务
     schedule-wizard          交互式设置定时计划 (推荐)
     help                   显示此帮助信息
 
@@ -485,6 +557,12 @@ async function main(): Promise<void> {
       break;
     case "schedule-wizard":
       await cmdScheduleWizard(config);
+      break;
+    case "install-cron":
+      await cmdInstallCron(config);
+      break;
+    case "uninstall-cron":
+      await cmdUninstallCron();
       break;
     case "help":
     case "--help":
