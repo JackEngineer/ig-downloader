@@ -20,7 +20,27 @@
 - Node.js 16+
 - npm
 
-### 安装步骤
+### 方式一：通过 npm 全局安装（推荐）
+
+```bash
+# 全局安装
+npm install -g ig-downloader
+
+# 安装 Playwright 浏览器（首次运行需要）
+npx playwright install chromium
+
+# 现在可以直接使用 ig-downloader 或 igd 命令
+ig-downloader --help
+```
+
+### 方式二：通过 npx 临时运行
+
+```bash
+# 无需安装，直接运行（每次都会下载最新版本）
+npx ig-downloader --help
+```
+
+### 方式三：从源码安装
 
 ```bash
 # 克隆仓库
@@ -35,51 +55,60 @@ npm run build
 
 # 安装 Playwright 浏览器（首次运行需要）
 npx playwright install chromium
+
+# 本地链接开发版本
+npm link
 ```
 
 ## 🚀 快速开始
+
+全局安装后，使用 `ig-downloader` 或简写 `igd` 命令：
 
 ### 1. 添加要跟踪的用户
 
 ```bash
 # 添加用户
-npm start add natgeo --note "国家地理"
+ig-downloader add natgeo --note "国家地理"
+# 或简写
+igd add natgeo --note "国家地理"
 
 # 限制最大视频数
-npm start add bbcnews --max-videos 5
+igd add bbcnews --max-videos 5
 ```
 
 ### 2. 查看跟踪列表
 
 ```bash
-npm start list
+igd list
 ```
 
 ### 3. 下载视频
 
 ```bash
 # 下载所有用户的新视频
-npm start run
+igd run
 
 # 只下载特定用户
-npm start run natgeo
+igd run natgeo
 
 # 预览模式（不实际下载）
-npm start run --dry-run
+igd run --dry-run
 ```
 
 ### 4. 配置定时任务
 
 ```bash
 # 使用向导配置定时计划
-npm start schedule-wizard
+igd schedule-wizard
 
 # 安装到系统 crontab
-npm start install-cron
+igd install-cron
 
 # 查看定时任务状态
-npm start cron
+igd cron
 ```
+
+> **从源码安装的用户**：继续使用 `npm start` 命令代替 `igd`
 
 ## 📖 命令详解
 
@@ -88,7 +117,7 @@ npm start cron
 #### `add <用户名>` - 添加跟踪用户
 
 ```bash
-npm start add <用户名> [选项]
+igd add <用户名> [选项]
 ```
 
 选项：
@@ -99,15 +128,15 @@ npm start add <用户名> [选项]
 示例：
 
 ```bash
-npm start add natgeo --max-videos 10 --note "国家地理官方"
-npm start add bbcnews --note "BBC新闻"
+igd add natgeo --max-videos 10 --note "国家地理官方"
+igd add bbcnews --note "BBC新闻"
 ```
 
 #### `remove <用户名>` - 移除用户
 
 ```bash
-npm start remove natgeo
-npm start rm bbcnews  # 简写形式
+igd remove natgeo
+igd rm bbcnews  # 简写形式
 ```
 
 #### `enable <用户名>` - 启用用户
@@ -115,7 +144,7 @@ npm start rm bbcnews  # 简写形式
 重新启用已禁用的用户：
 
 ```bash
-npm start enable natgeo
+igd enable natgeo
 ```
 
 #### `disable <用户名>` - 禁用用户
@@ -123,7 +152,7 @@ npm start enable natgeo
 暂时禁用用户而不删除其历史记录：
 
 ```bash
-npm start disable natgeo
+igd disable natgeo
 ```
 
 #### `list` - 查看跟踪列表
@@ -131,8 +160,8 @@ npm start disable natgeo
 显示所有跟踪用户及其统计信息：
 
 ```bash
-npm start list
-npm start ls  # 简写形式
+igd list
+igd ls  # 简写形式
 ```
 
 输出包括：
@@ -149,7 +178,7 @@ npm start ls  # 简写形式
 #### `run [用户名]` - 执行下载
 
 ```bash
-npm start run [用户名] [选项]
+igd run [用户名] [选项]
 ```
 
 选项：
@@ -160,13 +189,13 @@ npm start run [用户名] [选项]
 
 ```bash
 # 下载所有启用用户的新视频
-npm start run
+igd run
 
 # 只下载特定用户
-npm start run natgeo
+igd run natgeo
 
 # 预览将要下载的内容
-npm start run --dry-run
+igd run --dry-run
 ```
 
 工作流程：
@@ -185,13 +214,13 @@ npm start run --dry-run
 查看当前配置：
 
 ```bash
-npm start config
+igd config
 ```
 
 修改配置项：
 
 ```bash
-npm start config <配置项> <值>
+igd config <配置项> <值>
 ```
 
 可用配置项：
@@ -205,16 +234,16 @@ npm start config <配置项> <值>
 
 ```bash
 # 设置下载目录
-npm start config download-dir ~/Videos/Instagram
+igd config download-dir ~/Videos/Instagram
 
 # 设置默认最大视频数
-npm start config max-videos 20
+igd config max-videos 20
 
 # 设置滚动超时
-npm start config scroll-timeout 30000
+igd config scroll-timeout 30000
 
 # 设置定时计划（每天早8点和晚8点）
-npm start config schedule "0 8,20 * * *"
+igd config schedule "0 8,20 * * *"
 ```
 
 ### 定时任务
@@ -224,7 +253,7 @@ npm start config schedule "0 8,20 * * *"
 交互式配置定时任务（推荐）：
 
 ```bash
-npm start schedule-wizard
+igd schedule-wizard
 ```
 
 支持的定时模式：
@@ -240,7 +269,7 @@ npm start schedule-wizard
 自动将任务添加到系统 crontab：
 
 ```bash
-npm start install-cron
+igd install-cron
 ```
 
 功能：
@@ -255,7 +284,7 @@ npm start install-cron
 从 crontab 中移除定时任务：
 
 ```bash
-npm start uninstall-cron
+igd uninstall-cron
 ```
 
 #### `cron` - 查看定时任务状态
@@ -263,7 +292,7 @@ npm start uninstall-cron
 显示当前定时任务配置和状态：
 
 ```bash
-npm start cron
+igd cron
 ```
 
 输出包括：
@@ -280,7 +309,7 @@ npm start cron
 查看所有用户的下载统计：
 
 ```bash
-npm start stats
+igd stats
 ```
 
 显示：
@@ -428,7 +457,7 @@ crontab -l
 tail -f ~/ig-downloader.log
 
 # 确认任务状态
-npm start cron
+igd cron
 ```
 
 ### 权限问题

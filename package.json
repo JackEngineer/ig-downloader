@@ -1,24 +1,39 @@
 {
-  "name": "ig-downloader",
+  "name": "instagram-video-dl",
   "version": "1.0.0",
   "description": "Automated Instagram video downloader with user tracking, deduplication, and cron scheduling",
   "type": "module",
   "main": "dist/cli.js",
   "bin": {
-    "ig-downloader": "./dist/cli.js"
+    "ig-downloader": "./dist/cli.js",
+    "igd": "./dist/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JackEngineer/ig-downloader.git"
+  },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=16.0.0"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/cli.js",
     "run-all": "node dist/cli.js run",
+    "prepublishOnly": "npm run build && npm run test",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "release": "npm version patch --no-git-tag-version && npm publish --access public"
   },
   "keywords": [
     "instagram",
