@@ -9,6 +9,7 @@
 
 import { writeFile, mkdir, stat } from "fs/promises";
 import { join } from "path";
+import { MediaType } from "./extractor.js";
 
 // ============================================================================
 // Constants
@@ -24,7 +25,8 @@ const MAX_FILENAME_LENGTH = 80;
 // ============================================================================
 
 export interface DownloadTask {
-  videoUrl: string;
+  url: string;
+  type: MediaType;
   username: string;
   shortCode: string;
   caption?: string;
@@ -44,6 +46,18 @@ export interface DownloadResult {
 // Filename Sanitization
 // ============================================================================
 
+function getExtension(type: MediaType, url: string): string {
+  if (type === "video") return ".mp4";
+
+  // Try to guess from URL
+  const lowerUrl = url.toLowerCase();
+  if (lowerUrl.includes(".webp")) return ".webp";
+  if (lowerUrl.includes(".heic")) return ".heic";
+  if (lowerUrl.includes(".png")) return ".png";
+
+  return ".jpg"; // Default for images
+}
+
 /**
  * Create a safe filename from a caption string.
  * Falls back to shortCode if caption is empty/unusable.
@@ -55,7 +69,10 @@ export function sanitizeFilename(caption: string | undefined, shortCode: string)
 
   let name = caption
     // Remove emojis
-    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu, "")
+    .replace(
+      /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{200D}\u{20E3}]/gu,
+      "",
+    )
     // Remove hashtags
     .replace(/#\S+/g, "")
     // Remove @mentions
@@ -88,7 +105,7 @@ export function sanitizeFilename(caption: string | undefined, shortCode: string)
 async function withRetry<T>(
   fn: () => Promise<T>,
   maxRetries: number = MAX_RETRIES,
-  baseDelay: number = RETRY_BASE_DELAY_MS
+  baseDelay: number = RETRY_BASE_DELAY_MS,
 ): Promise<T> {
   let lastError: Error | undefined;
 
@@ -148,17 +165,15 @@ function dirname_safe(filePath: string): string {
 /**
  * Download a single video task, organizing into user directory.
  */
-export async function downloadVideo(
-  task: DownloadTask,
-  baseDir: string
-): Promise<DownloadResult> {
-  const filename = sanitizeFilename(task.caption, task.shortCode) + ".mp4";
+export async function downloadVideo(task: DownloadTask, baseDir: string): Promise<DownloadResult> {
+  const ext = getExtension(task.type, task.url);
+  const filename = sanitizeFilename(task.caption, task.shortCode) + ext;
   const userDir = join(baseDir, task.username);
   const filePath = join(userDir, filename);
 
   try {
     await mkdir(userDir, { recursive: true });
-    const { size } = await downloadFile(task.videoUrl, filePath);
+    const { size } = await downloadFile(task.url, filePath);
 
     return {
       success: true,
@@ -185,7 +200,7 @@ export async function downloadVideo(
 export async function batchDownload(
   tasks: DownloadTask[],
   baseDir: string,
-  onProgress?: (completed: number, total: number, result: DownloadResult) => void
+  onProgress?: (completed: number, total: number, result: DownloadResult) => void,
 ): Promise<{ downloaded: DownloadResult[]; failed: DownloadResult[] }> {
   const downloaded: DownloadResult[] = [];
   const failed: DownloadResult[] = [];
@@ -193,9 +208,7 @@ export async function batchDownload(
 
   for (let i = 0; i < tasks.length; i += DOWNLOAD_BATCH_SIZE) {
     const batch = tasks.slice(i, i + DOWNLOAD_BATCH_SIZE);
-    const results = await Promise.allSettled(
-      batch.map((task) => downloadVideo(task, baseDir))
-    );
+    const results = await Promise.allSettled(batch.map((task) => downloadVideo(task, baseDir)));
 
     for (const result of results) {
       completed++;

@@ -6,7 +6,13 @@ import { InstagramExtractor, extractShortCode } from "./extractor.js";
 import { batchDownload, DownloadTask } from "./downloader.js";
 import { log } from "./logger.js";
 import { runCronWizard, formatCronHelp } from "./cron-wizard.js";
-import { getCronStatus, installCronJob, uninstallCronJob, displayCronStatus, getNodePath } from "./cron-installer.js";
+import {
+  getCronStatus,
+  installCronJob,
+  uninstallCronJob,
+  displayCronStatus,
+  getNodePath,
+} from "./cron-installer.js";
 import { resolve } from "path";
 
 // ============================================================================
@@ -52,7 +58,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 async function cmdAdd(config: ConfigManager, args: ParsedArgs): Promise<void> {
   const username = args.positional[0];
   if (!username) {
-    log.error("用法: ig-downloader add <用户名> [--max-videos 20] [--note \"描述\"]");
+    log.error('用法: ig-downloader add <用户名> [--max-videos 20] [--note "描述"]');
     process.exit(1);
   }
 
@@ -159,13 +165,18 @@ async function cmdConfig(config: ConfigManager, args: ParsedArgs): Promise<void>
     log.dim(`最大视频数:   ${cfg.maxVideosPerUser}`);
     log.dim(`滚动超时:     ${cfg.scrollTimeout}ms`);
     log.dim(`定时计划:     ${cfg.schedule}`);
+    log.dim(
+      `代理设置:     ${cfg.proxy ? cfg.proxy.server : cfg.useFreeProxy ? "免费代理池" : "无"}`,
+    );
+    log.dim(`免费代理:     ${cfg.useFreeProxy ? "已启用" : "未启用"}`);
+    log.dim(`Cookies:      ${cfg.cookies ? cfg.cookies.length + " 个" : "未设置"}`);
     log.dim(`跟踪用户数:   ${cfg.users.length}`);
     return;
   }
 
-  if (!value) {
+  if (!value && setting !== "remove-proxy" && setting !== "clear-cookies") {
     log.error(`用法: ig-downloader config <设置项> <值>`);
-    log.dim("设置项: download-dir, max-videos, scroll-timeout, schedule");
+    log.dim("设置项: download-dir, max-videos, scroll-timeout, schedule, proxy, import-cookies");
     process.exit(1);
   }
 
@@ -193,9 +204,83 @@ async function cmdConfig(config: ConfigManager, args: ParsedArgs): Promise<void>
     case "schedule-wizard":
       log.error("请使用: ig-downloader schedule-wizard");
       process.exit(1);
+    case "proxy":
+      config.setProxy(
+        value,
+        args.flags["proxy-user"] as string,
+        args.flags["proxy-pass"] as string,
+      );
+      await config.save();
+      log.success(`代理已设置为: ${value}`);
+      break;
+    case "remove-proxy":
+      config.removeProxy();
+      await config.save();
+      log.success("代理已移除");
+      break;
+    case "free-proxy":
+      config.setUseFreeProxy(value === "on" || value === "true" || value === "1");
+      await config.save();
+      log.success(
+        `免费代理已${value === "on" || value === "true" || value === "1" ? "启用" : "禁用"}`,
+      );
+      break;
+    case "import-cookies": {
+      const { readFile } = await import("fs/promises");
+      try {
+        const cookieData = await readFile(value, "utf-8");
+        let cookies: import("./config.js").CookieConfig[] = [];
+
+        if (value.endsWith(".txt") || cookieData.includes("# Netscape HTTP Cookie File")) {
+          const lines = cookieData.split("\n");
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith("#")) continue;
+
+            const parts = trimmed.split("\t");
+            if (parts.length >= 7) {
+              const [domain, includeSubdomains, path, secure, expires, name, value] = parts;
+              cookies.push({
+                domain: domain.startsWith(".") ? domain : `.${domain}`,
+                name,
+                value,
+                path,
+                expires: parseInt(expires, 10),
+                httpOnly: false,
+                secure: secure === "TRUE",
+                sameSite: "Lax",
+              });
+            }
+          }
+        } else {
+          const parsed = JSON.parse(cookieData);
+          cookies = Array.isArray(parsed) ? parsed : [];
+        }
+
+        if (cookies.length === 0) {
+          log.error("Cookie 文件格式无效或为空");
+          process.exit(1);
+        }
+
+        config.setCookies(cookies);
+        await config.save();
+        log.success(`已导入 ${cookies.length} 个 cookies`);
+      } catch (err) {
+        log.error(`导入 cookies 失败: ${err instanceof Error ? err.message : String(err)}`);
+        process.exit(1);
+      }
+      break;
+    }
+    case "clear-cookies":
+      config.clearCookies();
+      await config.save();
+      log.success("Cookies 已清除");
+      break;
     default:
       log.error(`未知设置项: ${setting}`);
-      log.dim("可用项: download-dir, max-videos, scroll-timeout, schedule");
+      log.dim(
+        "可用项: download-dir, max-videos, scroll-timeout, schedule, proxy, remove-proxy, free-proxy, import-cookies, clear-cookies",
+      );
       process.exit(1);
   }
 }
@@ -203,7 +288,7 @@ async function cmdConfig(config: ConfigManager, args: ParsedArgs): Promise<void>
 async function cmdRun(
   config: ConfigManager,
   history: HistoryManager,
-  args: ParsedArgs
+  args: ParsedArgs,
 ): Promise<void> {
   const targetUsername = args.positional[0];
   const dryRun = args.flags["dry-run"] === true;
@@ -213,7 +298,9 @@ async function cmdRun(
   if (targetUsername) {
     const user = config.findUser(targetUsername);
     if (!user) {
-      log.error(`用户 @${targetUsername.replace(/^@/, "").toLowerCase()} 不在跟踪列表中。请先添加: ig-downloader add ${targetUsername}`);
+      log.error(
+        `用户 @${targetUsername.replace(/^@/, "").toLowerCase()} 不在跟踪列表中。请先添加: ig-downloader add ${targetUsername}`,
+      );
       process.exit(1);
     }
     usersToProcess = [user];
@@ -231,7 +318,7 @@ async function cmdRun(
   log.dim(`下载目录: ${cfg.downloadDir}`);
   if (dryRun) log.warn("模拟运行 — 不会实际下载文件。");
 
-  const extractor = new InstagramExtractor();
+  const extractor = new InstagramExtractor(cfg.proxy, cfg.useFreeProxy, cfg.cookies);
   await extractor.initialize();
   log.success("浏览器已初始化。");
 
@@ -245,15 +332,19 @@ async function cmdRun(
       const maxVideos = user.maxVideos || cfg.maxVideosPerUser;
 
       log.header(`@${user.username}`);
-      log.step(`正在收集 Reel 链接 (最大: ${maxVideos})...`);
+      log.step(`正在收集帖子/Reel 链接 (最大: ${maxVideos})...`);
 
-      const reelLinks = await extractor.collectReelLinks(user.username, maxVideos, cfg.scrollTimeout);
+      const reelLinks = await extractor.collectReelLinks(
+        user.username,
+        maxVideos,
+        cfg.scrollTimeout,
+      );
       if (reelLinks.length === 0) {
-        log.warn(`未找到 @${user.username} 的 Reel 链接。Instagram 可能需要登录。`);
+        log.warn(`未找到 @${user.username} 的帖子/Reel 链接。Instagram 可能需要登录。`);
         continue;
       }
 
-      log.info(`找到 ${reelLinks.length} 个 Reel。正在检查新视频...`);
+      log.info(`找到 ${reelLinks.length} 个链接。正在检查新内容...`);
 
       const downloadedCodes = history.getDownloadedShortCodes(user.username);
       const newLinks = reelLinks.filter((link) => {
@@ -267,7 +358,9 @@ async function cmdRun(
         continue;
       }
 
-      log.info(`${newLinks.length} 个新视频待下载 (${reelLinks.length - newLinks.length} 个已下载过)。`);
+      log.info(
+        `${newLinks.length} 个新视频待下载 (${reelLinks.length - newLinks.length} 个已下载过)。`,
+      );
       globalSkipped += reelLinks.length - newLinks.length;
 
       if (dryRun) {
@@ -280,26 +373,55 @@ async function cmdRun(
       log.step("正在提取视频链接...");
 
       const tasks: DownloadTask[] = [];
+      const seenShortCodes = new Set<string>();
+      let duplicateCount = 0;
+
       for (let i = 0; i < newLinks.length; i++) {
         const link = newLinks[i];
         const shortCode = extractShortCode(link);
         if (!shortCode) continue;
 
+        if (seenShortCodes.has(shortCode)) {
+          duplicateCount++;
+          continue;
+        }
+        seenShortCodes.add(shortCode);
+
         log.progress(i + 1, newLinks.length, `正在提取 ${shortCode}...`);
 
-        const result = await extractor.extractFromPost(link);
-        if (result.success && result.videos.length > 0) {
-          const best = result.videos[0];
-          tasks.push({
-            videoUrl: best.url,
-            username: user.username,
-            shortCode: best.shortCode || shortCode,
-            caption: best.caption,
-          });
-        } else {
-          log.warn(`无法从 ${link} 提取视频: ${result.error || "未知错误"}`);
+        try {
+          const result = await extractor.extractFromPost(link);
+          if (result.success && result.media.length > 0) {
+            const bestItem = result.media.reduce((best, current) => {
+              if (!best) return current;
+              return (current.bitrate || 0) > (best.bitrate || 0) ? current : best;
+            });
+
+            tasks.push({
+              url: bestItem.url,
+              type: bestItem.type || "video",
+              username: user.username,
+              shortCode: bestItem.shortCode || shortCode,
+              caption: bestItem.caption,
+            });
+          } else {
+            log.warn(`无法从 ${shortCode} 提取: ${result.error || "未知错误"}`);
+            globalFailed++;
+          }
+        } catch (err) {
+          log.warn(`提取 ${shortCode} 时出错: ${err instanceof Error ? err.message : String(err)}`);
           globalFailed++;
+          if (err instanceof Error && err.message.includes("browser has been closed")) {
+            log.error("浏览器已关闭，请重新运行命令");
+            break;
+          }
         }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      if (duplicateCount > 0) {
+        log.dim(`  (跳过 ${duplicateCount} 个重复链接)`);
       }
 
       if (tasks.length === 0) {
@@ -316,7 +438,7 @@ async function cmdRun(
           if (result.success) {
             log.progress(completed, total, `${result.sizeFormatted} — ${result.shortCode}`);
           }
-        }
+        },
       );
 
       for (const d of downloaded) {
@@ -334,7 +456,9 @@ async function cmdRun(
       globalSize += downloaded.reduce((sum, d) => sum + (d.size || 0), 0);
 
       if (downloaded.length > 0) {
-        log.success(`已为 @${user.username} 下载 ${downloaded.length} 个视频 (${log.formatSize(downloaded.reduce((s, d) => s + (d.size || 0), 0))})`);
+        log.success(
+          `已为 @${user.username} 下载 ${downloaded.length} 个视频 (${log.formatSize(downloaded.reduce((s, d) => s + (d.size || 0), 0))})`,
+        );
       }
       if (failed.length > 0) {
         log.warn(`${failed.length} 个视频下载失败 @${user.username}:`);
@@ -398,9 +522,13 @@ async function cmdCron(config: ConfigManager, args: ParsedArgs): Promise<void> {
     log.info("或者手动添加到 crontab:");
     console.log();
     if (nodePath) {
-      console.log(`  ${cfg.schedule} cd ${resolve(".")} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+      console.log(
+        `  ${cfg.schedule} cd ${resolve(".")} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`,
+      );
     } else {
-      console.log(`  ${cfg.schedule} cd ${resolve(".")} && <node路径> ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+      console.log(
+        `  ${cfg.schedule} cd ${resolve(".")} && <node路径> ${scriptPath} run >> ~/ig-downloader.log 2>&1`,
+      );
       log.dim("提示: 使用 'which node' 找到你的 node 路径");
     }
   }
@@ -430,7 +558,9 @@ async function cmdInstallCron(config: ConfigManager): Promise<void> {
     log.info("请确保 Node.js 已安装，或使用以下命令手动安装:");
     log.dim("  1. 找到 node 路径: which node");
     log.dim(`  2. 编辑 crontab: crontab -e`);
-    log.dim(`  3. 添加: ${cfg.schedule} cd ${workDir} && <node路径> ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    log.dim(
+      `  3. 添加: ${cfg.schedule} cd ${workDir} && <node路径> ${scriptPath} run >> ~/ig-downloader.log 2>&1`,
+    );
     process.exit(1);
   }
 
@@ -453,7 +583,9 @@ async function cmdInstallCron(config: ConfigManager): Promise<void> {
     log.error("\n❌ 安装失败");
     log.info("\n你可以尝试手动安装:");
     log.dim("  1. 运行: crontab -e");
-    log.dim(`  2. 添加: ${cfg.schedule} cd ${workDir} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`);
+    log.dim(
+      `  2. 添加: ${cfg.schedule} cd ${workDir} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`,
+    );
     process.exit(1);
   }
 }
@@ -508,6 +640,9 @@ function showHelp(): void {
       max-videos             每用户默认最大视频数
       scroll-timeout         滚动超时时间（毫秒）
       schedule               Cron 表达式
+      proxy                  设置代理服务器
+      remove-proxy           移除代理设置
+      free-proxy on/off      启用/禁用自动免费代理池
 
     stats                  显示全局下载统计
     cron                   显示 crontab 设置说明和状态
@@ -524,6 +659,10 @@ function showHelp(): void {
     ig-downloader run --dry-run        # 预览而不下载
     ig-downloader config download-dir ~/Videos/Instagram
     ig-downloader config schedule "0 8,20 * * *"
+    ig-downloader config proxy http://proxy.example.com:8080
+    ig-downloader config proxy http://user:pass@proxy.com:8080
+    ig-downloader config free-proxy on     # 启用自动免费代理
+    ig-downloader config free-proxy off    # 禁用免费代理
   `);
 }
 

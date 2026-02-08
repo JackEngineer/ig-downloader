@@ -28,17 +28,43 @@ export interface TrackedUser {
   note?: string;
 }
 
+export interface ProxyConfig {
+  /** Proxy server URL (e.g., http://proxy.example.com:8080) */
+  server: string;
+  /** Optional username for proxy authentication */
+  username?: string;
+  /** Optional password for proxy authentication */
+  password?: string;
+}
+
+export interface CookieConfig {
+  /** Cookie name */
+  name: string;
+  /** Cookie value */
+  value: string;
+  /** Cookie domain (e.g., .instagram.com) */
+  domain: string;
+  /** Cookie path (default: /) */
+  path?: string;
+  /** Cookie expiration timestamp in seconds */
+  expires?: number;
+  /** Whether cookie is HTTP only */
+  httpOnly?: boolean;
+  /** Whether cookie is secure (HTTPS only) */
+  secure?: boolean;
+  /** SameSite attribute */
+  sameSite?: "Strict" | "Lax" | "None";
+}
+
 export interface AppConfig {
-  /** Base directory for all downloads. Each user gets a subdirectory. */
   downloadDir: string;
-  /** Default max videos to fetch per user per run */
   maxVideosPerUser: number;
-  /** Scroll timeout in ms when collecting reel links */
   scrollTimeout: number;
-  /** Cron expression for scheduled runs (for display/crontab generation) */
   schedule: string;
-  /** List of tracked Instagram users */
   users: TrackedUser[];
+  proxy?: ProxyConfig;
+  useFreeProxy?: boolean;
+  cookies?: CookieConfig[];
 }
 
 // ============================================================================
@@ -158,5 +184,29 @@ export class ConfigManager {
 
   setSchedule(cron: string): void {
     this.get().schedule = cron;
+  }
+
+  setProxy(server: string, username?: string, password?: string): void {
+    this.get().proxy = { server, username, password };
+  }
+
+  removeProxy(): void {
+    delete this.get().proxy;
+  }
+
+  setUseFreeProxy(enabled: boolean): void {
+    this.get().useFreeProxy = enabled;
+  }
+
+  setCookies(cookies: CookieConfig[]): void {
+    this.get().cookies = cookies;
+  }
+
+  getCookies(): CookieConfig[] {
+    return this.get().cookies || [];
+  }
+
+  clearCookies(): void {
+    delete this.get().cookies;
   }
 }

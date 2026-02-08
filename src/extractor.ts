@@ -6,16 +6,20 @@
  */
 
 import { chromium, Browser, BrowserContext, Page, Response } from "playwright";
+import type { CookieConfig } from "./config.js";
 
 // ============================================================================
 // Types
 // ============================================================================
+
+export type MediaType = "video" | "image";
 
 export interface VideoInfo {
   url: string;
   quality: string;
   bitrate: number;
   shortCode: string;
+  type?: MediaType;
   caption?: string;
   username?: string;
   timestamp?: string;
@@ -25,6 +29,7 @@ export interface VideoInfo {
 export interface ExtractResult {
   success: boolean;
   videos: VideoInfo[];
+  media: VideoInfo[];
   error?: string;
 }
 
@@ -96,6 +101,15 @@ export function extractShortCode(url: string): string | undefined {
 export class InstagramExtractor {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
+  private cookies: CookieConfig[];
+
+  constructor(
+    private proxyConfig?: { server: string; username?: string; password?: string },
+    private useFreeProxy: boolean = false,
+    cookies: CookieConfig[] = [],
+  ) {
+    this.cookies = cookies;
+  }
 
   async initialize(): Promise<void> {
     this.browser = await chromium.launch({
@@ -117,6 +131,43 @@ export class InstagramExtractor {
       locale: "en-US",
       timezoneId: "America/New_York",
     });
+
+    if (this.cookies.length > 0) {
+      try {
+        const now = Math.floor(Date.now() / 1000);
+        const validCookies = this.cookies
+          .filter((c) => c.name && c.value && c.domain)
+          .map((c) => {
+            const cookie: Record<string, unknown> = {
+              name: c.name,
+              value: c.value,
+              domain: c.domain,
+              path: c.path || "/",
+              httpOnly: !!c.httpOnly,
+              secure: c.secure !== undefined ? c.secure : true,
+            };
+            if (c.expires && c.expires > now) {
+              cookie.expires = c.expires;
+            }
+            if (c.sameSite && ["Strict", "Lax", "None"].includes(c.sameSite)) {
+              cookie.sameSite = c.sameSite;
+            }
+            return cookie;
+          });
+
+        const instagramCookies = validCookies.filter(
+          (c) => c.domain && (c.domain as string).includes("instagram"),
+        );
+        if (instagramCookies.length > 0) {
+          await this.context.addCookies(instagramCookies as any);
+          console.log(`[auth] Loaded ${instagramCookies.length} Instagram cookies`);
+        }
+      } catch (err) {
+        console.log(
+          `[auth] Warning: Failed to load cookies: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
 
     // Block unnecessary resources for performance
     await this.context.route("**/*", (route) => {
@@ -203,7 +254,9 @@ export class InstagramExtractor {
         return {
           success: false,
           videos: [],
-          error: "No video URLs captured. The post may not contain a video, or it may require login.",
+          media: [],
+          error:
+            "No video URLs captured. The post may not contain a video, or it may require login.",
         };
       }
 
@@ -219,11 +272,12 @@ export class InstagramExtractor {
         ...metadata,
       }));
 
-      return { success: true, videos };
+      return { success: true, videos, media: videos };
     } catch (error) {
       return {
         success: false,
         videos: [],
+        media: [],
         error: `Extract error: ${error instanceof Error ? error.message : String(error)}`,
       };
     } finally {
@@ -238,18 +292,25 @@ export class InstagramExtractor {
   async collectReelLinks(
     username: string,
     maxVideos: number = 30,
-    scrollTimeout: number = 30000
+    scrollTimeout: number = 30000,
   ): Promise<string[]> {
     const page = await this.createPage();
 
     try {
-      const profileUrl = `https://www.instagram.com/${username}/reels/`;
-      await page.goto(profileUrl, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
-      await page.waitForTimeout(2000);
+      const profileUrl = `https://www.instagram.com/${username}/`;
+      console.log(`[scrape] Navigating to ${profileUrl}`);
+
+      await page.goto(profileUrl, {
+        waitUntil: "load",
+        timeout: 90000,
+      });
+
+      console.log("[scrape] Page loaded, waiting for content...");
+      await page.waitForTimeout(3000);
       await this.handleLoginPopup(page);
 
       // Wait for SPA content to render after popup dismissal
-      const reelSelector = "a[href*=\"/reel/\"], a[href*=\"/p/\"]";
+      const reelSelector = 'a[href*="/reel/"], a[href*="/p/"], article a[href^="/"]';
       try {
         await page.waitForSelector(reelSelector, { timeout: 15000 });
       } catch {
@@ -289,9 +350,16 @@ export class InstagramExtractor {
         }
       }
 
+      console.log(`[scrape] Found ${reelLinks.length} links for @${username}`);
       return reelLinks.slice(0, maxVideos);
     } catch (error) {
-      console.error(`Failed to collect reel links for @${username}:`, error instanceof Error ? error.message : String(error));
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[scrape] Failed to collect links for @${username}: ${errorMsg}`);
+
+      if (errorMsg.includes("Timeout")) {
+        console.log("[scrape] Try: check your network connection or disable free proxy");
+      }
+
       return [];
     } finally {
       await page.close();
@@ -310,7 +378,7 @@ export class InstagramExtractor {
       const pageData = await page.evaluate(() => {
         const result: { caption?: string; username?: string; views?: string } = {};
 
-        const metaTitle = document.querySelector("meta[property=\"og:title\"]");
+        const metaTitle = document.querySelector('meta[property="og:title"]');
         if (metaTitle) {
           const content = metaTitle.getAttribute("content") || "";
           const match = content.match(/^(.+?)\s+on\s+Instagram/);
@@ -318,11 +386,11 @@ export class InstagramExtractor {
         }
 
         if (!result.username) {
-          const headerLink = document.querySelector("header a[href^=\"/\"]");
+          const headerLink = document.querySelector('header a[href^="/"]');
           if (headerLink) result.username = headerLink.textContent?.trim();
         }
 
-        const metaDesc = document.querySelector("meta[property=\"og:description\"]");
+        const metaDesc = document.querySelector('meta[property="og:description"]');
         if (metaDesc) {
           const desc = metaDesc.getAttribute("content") || "";
           const captionMatch = desc.match(/- "(.+)"/) || desc.match(/[–—]\s*(.+)/);
@@ -354,7 +422,7 @@ export class InstagramExtractor {
         await videoEl.click();
         return;
       }
-      const playButton = page.locator("[aria-label=\"Play\"], [aria-label=\"播放\"]").first();
+      const playButton = page.locator('[aria-label="Play"], [aria-label="播放"]').first();
       if (await playButton.isVisible({ timeout: 2000 }).catch(() => false)) {
         await playButton.click();
       }
@@ -366,17 +434,17 @@ export class InstagramExtractor {
   private async handleLoginPopup(page: Page): Promise<void> {
     try {
       const dismissSelectors = [
-        "button:has-text(\"关闭\")",
-        "button:has-text(\"Not Now\")",
-        "button:has-text(\"Not now\")",
-        "button:has-text(\"以后再说\")",
-        "button:has-text(\"稍后再说\")",
-        "button:has-text(\"Ahora no\")",
-        "button:has-text(\"Agora não\")",
-        "[role=\"button\"]:has-text(\"Not Now\")",
-        "[role=\"button\"]:has-text(\"关闭\")",
-        "[aria-label=\"Close\"]",
-        "[aria-label=\"关闭\"]",
+        'button:has-text("关闭")',
+        'button:has-text("Not Now")',
+        'button:has-text("Not now")',
+        'button:has-text("以后再说")',
+        'button:has-text("稍后再说")',
+        'button:has-text("Ahora no")',
+        'button:has-text("Agora não")',
+        '[role="button"]:has-text("Not Now")',
+        '[role="button"]:has-text("关闭")',
+        '[aria-label="Close"]',
+        '[aria-label="关闭"]',
       ];
 
       for (const selector of dismissSelectors) {

@@ -73,8 +73,7 @@ describe("sanitizeFilename", () => {
   });
 
   it("should handle real Instagram captions", () => {
-    const caption =
-      "Amazing sunset at the beach! 🌅 #sunset #beach #vacation @traveler";
+    const caption = "Amazing sunset at the beach! 🌅 #sunset #beach #vacation @traveler";
     const result = sanitizeFilename(caption, "XYZ789");
 
     expect(result).toContain("Amazing_sunset_at_the_beach");
@@ -88,13 +87,14 @@ describe("sanitizeFilename", () => {
 describe("DownloadTask type", () => {
   it("should have correct structure", () => {
     const task: DownloadTask = {
-      videoUrl: "https://example.com/video.mp4",
+      url: "https://example.com/video.mp4",
+      type: "video",
       username: "testuser",
       shortCode: "ABC123",
       caption: "Test video",
     };
 
-    expect(task.videoUrl).toBe("https://example.com/video.mp4");
+    expect(task.url).toBe("https://example.com/video.mp4");
     expect(task.username).toBe("testuser");
     expect(task.shortCode).toBe("ABC123");
     expect(task.caption).toBe("Test video");
@@ -102,7 +102,8 @@ describe("DownloadTask type", () => {
 
   it("should allow optional caption", () => {
     const task: DownloadTask = {
-      videoUrl: "https://example.com/video.mp4",
+      url: "https://example.com/video.mp4",
+      type: "video",
       username: "testuser",
       shortCode: "ABC123",
     };
