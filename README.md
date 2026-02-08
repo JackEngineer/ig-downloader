@@ -24,20 +24,20 @@
 
 ```bash
 # 全局安装
-npm install -g ig-downloader
+npm install -g instagram-video-dl
 
 # 安装 Playwright 浏览器（首次运行需要）
 npx playwright install chromium
 
-# 现在可以直接使用 ig-downloader 或 igd 命令
-ig-downloader --help
+# 现在可以直接使用 igd 命令
+igd --help
 ```
 
 ### 方式二：通过 npx 临时运行
 
 ```bash
 # 无需安装，直接运行（每次都会下载最新版本）
-npx ig-downloader --help
+npx igd --help
 ```
 
 ### 方式三：从源码安装
@@ -68,8 +68,6 @@ npm link
 
 ```bash
 # 添加用户
-ig-downloader add natgeo --note "国家地理"
-# 或简写
 igd add natgeo --note "国家地理"
 
 # 限制最大视频数
