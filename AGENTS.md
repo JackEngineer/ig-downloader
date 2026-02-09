@@ -39,14 +39,14 @@ npx vitest run -t "should add user"     # 按名称运行测试
 
 ### 命名规范
 
-| 类型 | 规范 | 示例 |
-|------|------|------|
-| 文件 | 短横线命名 | `extractor.ts` |
-| 类/接口 | 帕斯卡命名 | `InstagramExtractor`, `VideoInfo` |
-| 函数/方法 | 驼峰命名 | `extractFromPost()` |
-| 常量 | 大写下划线 | `CDN_PATTERN`, `MAX_RETRIES` |
-| 私有成员 | 下划线前缀 | `_privateMethod()` |
-| 类型别名 | 帕斯卡命名 | `DownloadTask` |
+| 类型      | 规范       | 示例                              |
+| --------- | ---------- | --------------------------------- |
+| 文件      | 短横线命名 | `extractor.ts`                    |
+| 类/接口   | 帕斯卡命名 | `InstagramExtractor`, `VideoInfo` |
+| 函数/方法 | 驼峰命名   | `extractFromPost()`               |
+| 常量      | 大写下划线 | `CDN_PATTERN`, `MAX_RETRIES`      |
+| 私有成员  | 下划线前缀 | `_privateMethod()`                |
+| 类型别名  | 帕斯卡命名 | `DownloadTask`                    |
 
 ### 导入规范
 
