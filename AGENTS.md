@@ -1,125 +1,74 @@
 # AGENTS.md
 
-这是一个 **opencode 工作空间** - Instagram 视频下载器 CLI 工具，具有用户跟踪、去重和定时调度功能。
+这是一个 **opencode 工作空间** - Instagram 视频下载器 CLI 工具。
 
 ## 构建/检查/测试命令
 
-本项目使用 **npm** 作为包管理器，配合 TypeScript、ESLint、Prettier 和 Vitest。
+使用 **npm** + TypeScript + ESLint + Prettier + Vitest。
 
 ```bash
-# 安装依赖
+# 依赖与构建
 npm install
+npm run build        # tsc 编译
+npm run dev          # tsc --watch 监听模式
+npm start            # node dist/cli.js
 
-# 构建（编译 TypeScript）
-npm run build
+# 代码检查与格式化
+npm run lint         # ESLint 检查
+npm run lint:fix     # 自动修复
+npm run format       # Prettier 格式化
+npm run format:check # 检查格式
 
-# 开发监听模式
-npm run dev
-
-# 运行 CLI
-npm start
-npm run run-all    # 为所有跟踪的用户运行下载器
-```
-
-### 代码检查与格式化
-
-```bash
-# 运行 ESLint
-npm run lint
-npm run lint:fix   # 自动修复问题
-
-# 运行 Prettier
-npm run format      # 格式化所有文件
-npm run format:check # 检查格式而不写入
-```
-
-### 使用 Vitest 测试
-
-```bash
-# 运行所有测试
-npm run test
-
-# 运行单个测试文件
-npx vitest run src/config.test.ts
-
-# 运行匹配模式的测试
-npx vitest run --reporter=verbose config
-
-# 开发监听模式
-npm run test:watch
-
-# 生成覆盖率报告
-npm run test:coverage
+# 测试（Vitest）
+npm run test                   # 运行所有测试
+npm run test:watch             # 监听模式
+npm run test:coverage          # 覆盖率报告
+npx vitest run src/config.test.ts      # 单个测试文件
+npx vitest run --reporter=verbose       # 详细输出
+npx vitest run -t "should add user"     # 按名称运行测试
 ```
 
 ## 代码风格指南
 
 ### TypeScript 配置
 
-- **启用严格模式** - 所有严格编译器选项已开启
-- **ES2022 目标** 配合 Node16 模块解析
-- **ES 模块** (`"type": "module"`) - 导入路径中使用 `.js` 扩展名
-- 为所有模块生成 **声明文件**
-- 启用 **源映射** 用于调试
-
-### 文件组织
-
-```
-src/
-├── cli.ts              # CLI 入口点和命令处理器
-├── config.ts           # 配置管理（JSON 持久化）
-├── config.test.ts      # 配置模块测试
-├── extractor.ts        # 基于 Playwright 的视频提取
-├── downloader.ts       # 文件下载逻辑（带重试）
-├── downloader.test.ts  # 下载器模块测试
-├── history.ts          # 下载跟踪 / 去重
-├── logger.ts           # 彩色控制台输出工具
-└── logger.test.ts      # 日志模块测试
-```
+- **严格模式** 已启用
+- **ES2022** 目标 + Node16 模块解析
+- **ES 模块** (`"type": "module"`) - 导入使用 `.js` 扩展名
+- 生成 **声明文件** 和 **源映射**
 
 ### 命名规范
 
 | 类型 | 规范 | 示例 |
 |------|------|------|
-| 文件 | 短横线命名法 | `extractor.ts` |
-| 类 | 帕斯卡命名法 | `InstagramExtractor` |
-| 接口 | 帕斯卡命名法 | `VideoInfo`, `ExtractResult` |
-| 函数/方法 | 驼峰命名法 | `extractFromPost()`, `sanitizeFilename()` |
-| 常量 | 大写下划线命名法 | `CDN_PATTERN`, `MAX_RETRIES` |
+| 文件 | 短横线命名 | `extractor.ts` |
+| 类/接口 | 帕斯卡命名 | `InstagramExtractor`, `VideoInfo` |
+| 函数/方法 | 驼峰命名 | `extractFromPost()` |
+| 常量 | 大写下划线 | `CDN_PATTERN`, `MAX_RETRIES` |
 | 私有成员 | 下划线前缀 | `_privateMethod()` |
-| 类型别名 | 帕斯卡命名法 | `DownloadTask`, `HistoryData` |
+| 类型别名 | 帕斯卡命名 | `DownloadTask` |
 
-### 导入与导出
+### 导入规范
 
-- **仅使用命名导出** - 不使用默认导出
-- 在导入路径中 **使用 `.js` 扩展名**（ES 模块必需）
-- **分组导入**：(1) 外部包, (2) 内部模块, (3) Node.js 内置模块
+- **仅命名导出**（不使用默认导出）
+- 导入路径使用 `.js` 扩展名
+- **分组顺序**：(1) 外部包 → (2) 内部模块 → (3) Node.js 内置
 
 ```typescript
-import { chromium, Browser } from "playwright";
+import { chromium } from "playwright";
 import { InstagramExtractor } from "./extractor.js";
 import { readFile } from "fs/promises";
 ```
 
-### 类型模式
+### 类型与错误处理
 
-- 公共函数和方法使用 **显式返回类型**
-- 数据结构使用 **接口**，联合/复杂类型使用 **类型别名**
-- 可选属性使用 `?:` 标记
-- 适当使用 **泛型**（如 `Promise<T>`）
-- **空安全** - 始终使用严格检查处理 `null`/`undefined`
-
-### 错误处理
-
-- 异步操作和文件 I/O **始终使用 `try/catch`**
-- 错误对象使用 **类型保护**：`error instanceof Error ? error.message : String(error)`
-- **提前返回** 用于保护子句，避免深层嵌套
-- 从工具函数抛出 **描述性错误**，在命令级别捕获
-- 网络操作使用 **指数退避重试逻辑**
+- 公共函数使用 **显式返回类型**
+- 数据结构用 **interface**，联合类型用 **type**
+- 异步操作 **始终 try/catch**
+- 错误类型保护：`error instanceof Error ? error.message : String(error)`
+- 网络操作使用 **指数退避重试**
 
 ### 代码组织
-
-- **章节注释** 带视觉分隔符：
 
 ```typescript
 // ============================================================================
@@ -127,42 +76,29 @@ import { readFile } from "fs/promises";
 // ============================================================================
 ```
 
-- 文件头部使用 **JSDoc** 描述模块用途
+- 文件头部使用 **JSDoc** 描述模块
+- **常量** 定义在导入后顶部
 - **私有方法** 分组在类末尾
-- **常量** 定义在导入之后文件顶部
+- 始终使用 **async/await**
+- 并行操作用 `Promise.all()` / `Promise.allSettled()`
+- 在 **finally 块** 中清理资源（浏览器、文件句柄）
 
-### 异步模式
+### 格式化（Prettier）
 
-- **始终使用 async/await**，不使用原始 Promise
-- 并行操作使用 `Promise.all()` 或 `Promise.allSettled()`
-- 顺序重要时使用 `for...of` 顺序迭代
-- **在 finally 块中清理**（浏览器上下文、文件句柄）
-
-### 测试模式
-
-- 使用 globals 启用的 **Vitest**
-- 测试与源文件并列存放（`*.test.ts`）
-- 使用 `withConfig()` 模式作为带清理的测试辅助函数
-- 在 `finally` 块中使用临时目录并清理
-
-```typescript
-import { describe, it, expect } from "vitest";
-
-describe("功能", () => {
-  it("应该执行某操作", async () => {
-    // 准备、执行、断言
-  });
-});
+```json
+{
+  "semi": true,
+  "trailingComma": "all",
+  "singleQuote": false,
+  "printWidth": 100,
+  "tabWidth": 2
+}
 ```
 
-### 字符串与格式化
-
-- 字符串使用 **双引号**（"示例"）
-- 插值和多行字符串使用 **模板字面量**
-- 多行对象/数组字面量使用 **尾随逗号**
-- **2 空格缩进**（Prettier 强制执行）
-- **打印宽度**：100 字符
-- **分号**：必需
+- **双引号** 字符串
+- **模板字面量** 用于插值
+- **尾随逗号** 必需
+- **2 空格缩进**
 
 ### ESLint 规则
 
@@ -170,12 +106,30 @@ describe("功能", () => {
 - `@typescript-eslint/no-unused-vars`: error（允许 `_` 前缀）
 - `@typescript-eslint/no-explicit-any`: error
 - `@typescript-eslint/prefer-nullish-coalescing`: error
-- `no-console`: warn（允许 `console.error` 和 `console.warn`）
+- `@typescript-eslint/prefer-optional-chain`: error
+- `no-console`: warn（允许 `console.error`, `console.warn`）
+- `prettier/prettier`: error
+
+### 测试模式
+
+- 使用 **Vitest**（globals 启用）
+- 测试与源文件并列：`*.test.ts`
+- 使用临时目录并在 `finally` 中清理
+
+```typescript
+import { describe, it, expect } from "vitest";
+
+describe("config", () => {
+  it("should add user", async () => {
+    // arrange, act, assert
+  });
+});
+```
 
 ## 核心原则
 
-1. **严格 TypeScript** - 不使用 `any` 类型，无解释不使用 `@ts-ignore`
-2. **防御式编程** - 处理边界情况（空输入、网络故障）
-3. **用户友好错误** - CLI 级别清晰消息，技术细节记录在日志中
-4. **资源清理** - 始终关闭浏览器上下文，即使出错时
-5. **幂等操作** - 可安全重复运行（通过历史记录跟踪去重）
+1. **严格 TypeScript** - 不使用 `any`，不用 `@ts-ignore`
+2. **防御式编程** - 处理空输入、网络故障
+3. **用户友好错误** - CLI 清晰消息，技术细节记日志
+4. **资源清理** - 始终关闭浏览器上下文
+5. **幂等操作** - 通过历史记录实现可安全重复运行
