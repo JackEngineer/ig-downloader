@@ -5,6 +5,17 @@ import { HistoryManager } from "./history.js";
 import { InstagramExtractor, extractShortCode } from "./extractor.js";
 import { batchDownload, DownloadTask } from "./downloader.js";
 import { log, printFiglet, printSmallFiglet, CYAN } from "./logger.js";
+import {
+  checkSetupStatus,
+  showSetupWizard,
+  showNoUsersGuide,
+  showNoCookiesWarning,
+  showDownloadCompleteGuide,
+  showConfigCheck,
+  showErrorSolution,
+  showBrowserInstallGuide,
+  isBrowserError,
+} from "./setup.js";
 import { runCronWizard, formatCronHelp } from "./cron-wizard.js";
 import {
   getCronStatus,
@@ -313,14 +324,22 @@ async function cmdRun(
     return;
   }
 
-  console.log();
-  printSmallFiglet("IGD", CYAN);
   log.info(`正在处理 ${usersToProcess.length} 个用户...`);
   log.dim(`下载目录: ${cfg.downloadDir}`);
   if (dryRun) log.warn("模拟运行 — 不会实际下载文件。");
 
   const extractor = new InstagramExtractor(cfg.proxy, cfg.useFreeProxy, cfg.cookies);
-  await extractor.initialize();
+
+  try {
+    await extractor.initialize();
+  } catch (error) {
+    if (error instanceof Error && isBrowserError(error)) {
+      showBrowserInstallGuide();
+      process.exit(1);
+    }
+    throw error;
+  }
+
   log.success("浏览器已初始化。");
 
   let globalDownloaded = 0;
@@ -342,6 +361,12 @@ async function cmdRun(
       );
       if (reelLinks.length === 0) {
         log.warn(`未找到 @${user.username} 的帖子/Reel 链接。Instagram 可能需要登录。`);
+        console.log();
+        log.info("解决方案:");
+        log.dim("  1. 导入浏览器 Cookie: igd config import-cookies ~/cookies.txt");
+        log.dim("  2. 检查用户是否为公开账号");
+        log.dim("  3. 稍后重试（Instagram 可能暂时限流）");
+        console.log();
         continue;
       }
 
@@ -472,17 +497,13 @@ async function cmdRun(
     await extractor.close();
   }
 
-  console.log();
-  printSmallFiglet("IGD", CYAN);
-  log.dim(`已下载: ${globalDownloaded} 个视频 (${log.formatSize(globalSize)})`);
-  log.dim(`已跳过: ${globalSkipped} 个 (已下载过)`);
-  log.dim(`失败:   ${globalFailed}`);
+  showDownloadCompleteGuide(globalDownloaded, globalFailed);
 }
 
-async function cmdStats(history: HistoryManager): Promise<void> {
+async function cmdStats(history: HistoryManager, config: ConfigManager): Promise<void> {
   const stats = history.getGlobalStats();
-  console.log();
-  printSmallFiglet("IGD", CYAN);
+  const cfg = config.get();
+  showConfigCheck(!!cfg.cookies && cfg.cookies.length > 0, cfg.users.length);
   log.dim(`跟踪用户总数:     ${stats.totalUsers}`);
   log.dim(`已下载视频总数:   ${stats.totalDownloads}`);
   log.dim(`总大小:           ${log.formatSize(stats.totalSize)}`);
@@ -677,6 +698,32 @@ function showHelp(): void {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv);
+  const config = new ConfigManager();
+  await config.load();
+
+  const history = new HistoryManager();
+  await history.load();
+
+  const cfg = config.get();
+  const hasUsers = cfg.users.length > 0;
+  const hasCookies = !!cfg.cookies && cfg.cookies.length > 0;
+
+  const setupStatus = await checkSetupStatus(
+    config.getConfigPath(),
+    cfg.downloadDir,
+    hasUsers,
+    hasCookies,
+  );
+
+  if (
+    setupStatus.isFirstTime &&
+    args.command !== "help" &&
+    args.command !== "--help" &&
+    args.command !== "-h"
+  ) {
+    showSetupWizard(setupStatus);
+    return;
+  }
 
   if (args.command !== "help" && args.command !== "--help" && args.command !== "-h") {
     console.log();
@@ -684,11 +731,20 @@ async function main(): Promise<void> {
     console.log();
   }
 
-  const config = new ConfigManager();
-  await config.load();
+  if (
+    !hasUsers &&
+    args.command !== "help" &&
+    args.command !== "--help" &&
+    args.command !== "-h" &&
+    args.command !== "add"
+  ) {
+    showNoUsersGuide();
+    return;
+  }
 
-  const history = new HistoryManager();
-  await history.load();
+  if (!hasCookies && args.command === "run") {
+    showNoCookiesWarning();
+  }
 
   switch (args.command) {
     case "add":
@@ -716,7 +772,7 @@ async function main(): Promise<void> {
       await cmdRun(config, history, args);
       break;
     case "stats":
-      await cmdStats(history);
+      await cmdStats(history, config);
       break;
     case "cron":
       await cmdCron(config, args);
@@ -743,6 +799,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  log.error(`致命错误: ${error instanceof Error ? error.message : String(error)}`);
+  if (error instanceof Error) {
+    showErrorSolution(error);
+  } else {
+    log.error(`致命错误: ${String(error)}`);
+  }
   process.exit(1);
 });
