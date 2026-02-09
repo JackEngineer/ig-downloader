@@ -4,6 +4,8 @@
  * 简单的彩色控制台日志，用于 CLI 输出。
  */
 
+import figlet from "figlet";
+
 // ============================================================================
 // ANSI Colors
 // ============================================================================
@@ -15,8 +17,34 @@ const RED = "\x1b[31m";
 const GREEN = "\x1b[32m";
 const YELLOW = "\x1b[33m";
 const BLUE = "\x1b[34m";
-const CYAN = "\x1b[36m";
+export const CYAN = "\x1b[36m";
 const MAGENTA = "\x1b[35m";
+
+// ============================================================================
+// Figlet Banner
+// ============================================================================
+
+export function renderFiglet(text: string, font?: string): string {
+  try {
+    return figlet.textSync(text, { font: font as figlet.Fonts });
+  } catch {
+    return figlet.textSync(text);
+  }
+}
+
+export function printFiglet(text: string, color: string = CYAN): void {
+  const art = renderFiglet(text);
+  console.log(`${color}${art}${RESET}`);
+}
+
+export function printSmallFiglet(text: string, color: string = CYAN): void {
+  try {
+    const art = figlet.textSync(text, { font: "Small" });
+    console.log(`${color}${art}${RESET}`);
+  } catch {
+    printFiglet(text, color);
+  }
+}
 
 // ============================================================================
 // Logger
@@ -64,14 +92,12 @@ export const log = {
 
     // Calculate column widths
     const colWidths = rows[0].map((_, colIdx) =>
-      Math.max(...rows.map((row) => (row[colIdx] || "").length))
+      Math.max(...rows.map((row) => (row[colIdx] || "").length)),
     );
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
-      const line = row
-        .map((cell, colIdx) => (cell || "").padEnd(colWidths[colIdx]))
-        .join("  ");
+      const line = row.map((cell, colIdx) => (cell || "").padEnd(colWidths[colIdx])).join("  ");
 
       if (i === 0) {
         console.log(`  ${BOLD}${line}${RESET}`);

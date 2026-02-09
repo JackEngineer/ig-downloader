@@ -110,7 +110,8 @@ function formatCronDescription(cron: string): string {
 
   // 每周
   if (dayOfMonth === "*" && month === "*" && dayOfWeek !== "*") {
-    const weekday = WEEKDAYS.find((w) => w.value.toString() === dayOfWeek)?.label || `星期${dayOfWeek}`;
+    const weekday =
+      WEEKDAYS.find((w) => w.value.toString() === dayOfWeek)?.label || `星期${dayOfWeek}`;
     return `每周${weekday} ${formatTime(parseInt(hour), parseInt(minute))}`;
   }
 

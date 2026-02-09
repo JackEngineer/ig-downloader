@@ -4,7 +4,7 @@ import { ConfigManager, TrackedUser } from "./config.js";
 import { HistoryManager } from "./history.js";
 import { InstagramExtractor, extractShortCode } from "./extractor.js";
 import { batchDownload, DownloadTask } from "./downloader.js";
-import { log } from "./logger.js";
+import { log, printFiglet, printSmallFiglet, CYAN } from "./logger.js";
 import { runCronWizard, formatCronHelp } from "./cron-wizard.js";
 import {
   getCronStatus,
@@ -313,7 +313,8 @@ async function cmdRun(
     return;
   }
 
-  log.header(`Instagram 视频下载器`);
+  console.log();
+  printSmallFiglet("IGD", CYAN);
   log.info(`正在处理 ${usersToProcess.length} 个用户...`);
   log.dim(`下载目录: ${cfg.downloadDir}`);
   if (dryRun) log.warn("模拟运行 — 不会实际下载文件。");
@@ -471,7 +472,8 @@ async function cmdRun(
     await extractor.close();
   }
 
-  log.header("汇总");
+  console.log();
+  printSmallFiglet("IGD", CYAN);
   log.dim(`已下载: ${globalDownloaded} 个视频 (${log.formatSize(globalSize)})`);
   log.dim(`已跳过: ${globalSkipped} 个 (已下载过)`);
   log.dim(`失败:   ${globalFailed}`);
@@ -479,7 +481,8 @@ async function cmdRun(
 
 async function cmdStats(history: HistoryManager): Promise<void> {
   const stats = history.getGlobalStats();
-  log.header("下载统计");
+  console.log();
+  printSmallFiglet("IGD", CYAN);
   log.dim(`跟踪用户总数:     ${stats.totalUsers}`);
   log.dim(`已下载视频总数:   ${stats.totalDownloads}`);
   log.dim(`总大小:           ${log.formatSize(stats.totalSize)}`);
@@ -614,6 +617,8 @@ async function cmdUninstallCron(): Promise<void> {
 }
 
 function showHelp(): void {
+  console.log();
+  printSmallFiglet("IGD", CYAN);
   console.log(`
   ig-downloader — 自动 Instagram 视频下载器
 
@@ -672,6 +677,13 @@ function showHelp(): void {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv);
+
+  if (args.command !== "help" && args.command !== "--help" && args.command !== "-h") {
+    console.log();
+    printFiglet("IGD", CYAN);
+    console.log();
+  }
+
   const config = new ConfigManager();
   await config.load();
 

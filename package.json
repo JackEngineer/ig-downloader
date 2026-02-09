@@ -45,6 +45,8 @@
   "author": "Jack Lee",
   "license": "MIT",
   "dependencies": {
+    "@types/figlet": "^1.7.0",
+    "figlet": "^1.10.0",
     "playwright": "^1.49.1"
   },
   "devDependencies": {

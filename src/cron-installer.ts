@@ -27,7 +27,7 @@ function buildCronCommand(
   schedule: string,
   scriptPath: string,
   workDir: string,
-  nodePath: string
+  nodePath: string,
 ): string {
   return `${schedule} cd ${workDir} && ${nodePath} ${scriptPath} run >> ~/ig-downloader.log 2>&1`;
 }
@@ -46,7 +46,9 @@ export async function getNodePath(): Promise<string | null> {
       "/usr/bin/node",
       "/opt/homebrew/bin/node",
       // 动态检测 nvm 路径
-      ...(process.env.NVM_DIR ? [`${process.env.NVM_DIR}/versions/node/v${process.version}/bin/node`] : []),
+      ...(process.env.NVM_DIR
+        ? [`${process.env.NVM_DIR}/versions/node/v${process.version}/bin/node`]
+        : []),
       // 其他可能的 nvm 版本
       `${homedir()}/.nvm/versions/node/v${process.version}/bin/node`,
       `${homedir()}/.nvm/versions/node/current/bin/node`,
@@ -121,7 +123,7 @@ export async function getCronStatus(): Promise<CronStatus> {
 export async function installCronJob(
   schedule: string,
   scriptPath: string,
-  workDir: string
+  workDir: string,
 ): Promise<boolean> {
   const nodePath = await getNodePath();
 
